@@ -1,0 +1,165 @@
+---
+title: "Making Tables"
+author: "Daniel Hammarström"
+date: "4 2 2020"
+output: html_document
+---
+
+# Introduction
+
+# Methods
+
+## Participants
+
+Misspelled word. 
+
+
+
+
+```{r load packages and data, echo = FALSE}
+
+library(tidyverse) # for data wrangling and file download
+library(knitr) # for the kable function
+library(kableExtra) # for extended capabilities
+
+# Download the example file with the following command:
+
+library(tidyverse)
+
+download.file("https://www.dropbox.com/s/g2t97j8edqvvktn/tr003_dxa.csv?raw=1", 
+              destfile = "dxa_data.csv")
+
+dxa_data <- read_csv("dxa_data.csv")
+
+
+
+
+dxa <- dxa_data %>%
+        rowwise() %>%
+        mutate(LBM = (lean.whole / (fat.whole + BMD.whole + lean.whole)) * 100) %>%
+        select(subject, age, height, weight, LBM, sex, include) %>%
+        print()
+
+
+dxa %>%
+        ungroup() %>%
+        group_by(sex, include) %>%
+        summarise(m.age = mean(age), 
+                  s.age = sd(age), 
+                  m.height = mean(height), 
+                  s.height = sd(height), 
+                  m.weight = mean(weight), 
+                  s.weight = sd(weight), 
+                  m.lbm = mean(LBM), 
+                  s.lbm =sd(LBM)) %>%
+        print()
+
+
+summary_table <- dxa %>%
+        
+        ungroup() %>%
+        pivot_longer(cols = age:LBM, 
+                     names_to = "variable", values_to = "value") %>%
+
+        
+        group_by(sex, include, variable) %>%
+        summarise(m = mean(value, na.rm = TRUE), 
+                  s = sd(value)) %>%
+        print()
+
+
+
+summary_table <- dxa %>%
+        ungroup() %>%
+        pivot_longer(cols = age:LBM, 
+                     names_to = "variable", values_to = "value") %>%
+        group_by(sex, include, variable) %>%
+        summarise(m = mean(value), 
+                  s = sd(value)) %>%
+        ungroup() %>%
+        
+        mutate(summary = paste0(sprintf("%.1f", m),
+                                " (",
+                                sprintf("%.1f", s), 
+                                ")")) %>%
+
+        select(sex, include, variable, summary) %>%
+ 
+        pivot_wider(id_cols = variable, 
+                    names_from = c(sex, include), 
+                    values_from = summary) %>%
+        print()
+
+
+
+
+```
+
+
+```{r mytable, results = "asis"}
+summary_table %>%
+        kable(format = "html", 
+              col.names = c("Variable", 
+                                                "Female excluded",
+                                                "Female included", 
+                                                "Male excluded", 
+                                                "Male included"), 
+                                        caption = "Participant characteristics")
+
+
+```
+
+
+
+```{r, results = "asis"}
+
+summary_table %>%
+        kable(format = "html", col.names = c(" ", 
+                                                "Excluded",
+                                                "Included", 
+                                                "Excluded", 
+                                                "Included"), 
+                                        caption = "Participant characteristics") %>%
+                add_header_above(c(" " = 1, "Female" = 2, "Male" = 2))
+
+
+```
+
+
+```{r, results = "asis"}
+
+dxa %>%
+        ungroup() %>%
+        pivot_longer(cols = age:LBM, names_to = "variable", values_to = "value") %>%
+        group_by(sex, include, variable) %>%
+        summarise(m = mean(value), 
+                  s = sd(value)) %>%
+        ungroup() %>%
+        mutate(summary = paste0(sprintf("%.1f", m),
+                                " (",
+                                sprintf("%.1f", s), 
+                                ")")) %>%
+        select(sex, include, variable, summary) %>%
+        pivot_wider(id_cols = variable, names_from = c(sex, include), values_from = summary) %>%
+        # sort the rows -- create a factor level
+        mutate(variable = factor(variable, levels = c("age", "height", "weight", "LBM"))) %>%
+        arrange(variable) %>%
+        mutate(Variable = c("Age (yrs)", "Stature (cm)", "Body mass (kg)", "Lean body mass (%)")) %>%
+        select(Variable, female_excl:male_incl) %>%
+        kable(format = "html", col.names = c(" ", 
+                                                "Excluded",
+                                                "Included", 
+                                                "Excluded", 
+                                                "Included"), 
+                                        caption = "Table 1. Participant characteristics") %>%
+                                        add_header_above(c(" " = 1, "Female" = 2, "Male" = 2)) %>%
+                                        footnote(general = "Values are Mean (SD)")
+
+
+```
+
+
+
+
+
+
